@@ -1,13 +1,14 @@
 package com.example.Eventify.controller;
 
+import com.example.Eventify.entity.SubEvent;
+import com.example.Eventify.service.SubEventService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.Eventify.entity.SubEvent;
-import com.example.Eventify.service.SubEventService;
-
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/subevents")
@@ -16,36 +17,47 @@ public class SubEventController {
     @Autowired
     private SubEventService subEventService;
 
-    @GetMapping
-    public List<SubEvent> getAllSubEvents() {
-        return subEventService.getAllSubEvents();
-    }
-
-    @GetMapping("/{subEventId}")
-    public ResponseEntity<SubEvent> getSubEventById(@PathVariable int subEventId) {
-        SubEvent subEvent = subEventService.getSubEventById(subEventId);
-        return subEvent != null ? ResponseEntity.ok(subEvent) : ResponseEntity.notFound().build();
-    }
-
+    // Create a new SubEvent
     @PostMapping
-    public SubEvent createSubEvent(@RequestBody SubEvent subEvent) {
-        return subEventService.createOrUpdateSubEvent(subEvent);
+    public ResponseEntity<SubEvent> createSubEvent(@RequestBody SubEvent subEvent) {
+        SubEvent createdSubEvent = subEventService.createSubEvent(subEvent);
+        return new ResponseEntity<>(createdSubEvent, HttpStatus.CREATED);
     }
 
-    @PutMapping("/{subEventId}")
-    public ResponseEntity<SubEvent> updateSubEvent(@PathVariable int subEventId, @RequestBody SubEvent subEvent) {
-        SubEvent existingSubEvent = subEventService.getSubEventById(subEventId);
-        if (existingSubEvent != null) {
-            subEvent.setSubEventId(subEventId);
-            return ResponseEntity.ok(subEventService.createOrUpdateSubEvent(subEvent));
-        } else {
-            return ResponseEntity.notFound().build();
+    // Get all SubEvents
+    @GetMapping
+    public ResponseEntity<List<SubEvent>> getAllSubEvents() {
+        List<SubEvent> subEvents = subEventService.getAllSubEvents();
+        return new ResponseEntity<>(subEvents, HttpStatus.OK);
+    }
+
+    // Get a SubEvent by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<SubEvent> getSubEventById(@PathVariable("id") int subEventId) {
+        Optional<SubEvent> subEvent = subEventService.getSubEventById(subEventId);
+        return subEvent.map(ResponseEntity::ok)
+                       .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Update a SubEvent
+    @PutMapping("/{id}")
+    public ResponseEntity<SubEvent> updateSubEvent(@PathVariable("id") int subEventId, @RequestBody SubEvent updatedSubEvent) {
+        try {
+            SubEvent subEvent = subEventService.updateSubEvent(subEventId, updatedSubEvent);
+            return new ResponseEntity<>(subEvent, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         }
     }
 
-    @DeleteMapping("/{subEventId}")
-    public ResponseEntity<Void> deleteSubEvent(@PathVariable int subEventId) {
-        subEventService.deleteSubEvent(subEventId);
-        return ResponseEntity.noContent().build();
+    // Delete a SubEvent
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSubEvent(@PathVariable("id") int subEventId) {
+        try {
+            subEventService.deleteSubEvent(subEventId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 }
